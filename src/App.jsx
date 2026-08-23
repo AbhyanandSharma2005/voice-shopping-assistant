@@ -1,17 +1,28 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useSpeechRecognition } from './hooks/useSpeechRecognition';
 import { useShoppingList } from './hooks/useShoppingList';
 import { parseCommand } from './utils/parseCommand';
+import { getSubstitutes, getSeasonalSuggestions, getRunningLowSuggestions } from './utils/suggestions';
 
 function App() {
   const { transcript, listening, error, startListening } = useSpeechRecognition();
-  const { groupedByCategory, lastAction, applyCommand } = useShoppingList();
+  const { items, groupedByCategory, lastAction, applyCommand } = useShoppingList();
 
   useEffect(() => {
     if (!transcript) return;
     const parsed = parseCommand(transcript);
     applyCommand(parsed);
   }, [transcript, applyCommand]);
+
+  const currentItemNames = items.map((i) => i.name);
+  const seasonalSuggestions = getSeasonalSuggestions(currentItemNames);
+  const runningLowSuggestions = getRunningLowSuggestions(currentItemNames);
+  const substitutesForLastAdd =
+    lastAction?.type === 'added' ? getSubstitutes(lastAction.name) : [];
+
+  const handleQuickAdd = (name) => {
+    applyCommand({ intent: 'ADD_ITEM', item: name, quantity: 1, raw: `quick-add: ${name}` });
+  };
 
   return (
     <div className="p-6 max-w-md mx-auto mt-8">
@@ -37,7 +48,6 @@ function App() {
         </p>
       </div>
 
-      {/* Confirmation toast for the last action */}
       {lastAction && (
         <div className="mt-3 px-3 py-2 bg-green-50 border border-green-200 rounded text-sm text-green-800">
           {lastAction.type === 'added' && `Added ${lastAction.quantity} ${lastAction.name} ✓`}
@@ -49,17 +59,67 @@ function App() {
         </div>
       )}
 
-      {/* Shopping list grouped by category */}
+      {substitutesForLastAdd.length > 0 && (
+        <div className="mt-3 px-3 py-2 bg-blue-50 border border-blue-200 rounded text-sm">
+          <span className="text-blue-800">Prefer an alternative to {lastAction.name}?</span>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {substitutesForLastAdd.map((sub) => (
+              <button
+                key={sub}
+                onClick={() => handleQuickAdd(sub)}
+                className="px-3 py-1 bg-white border border-blue-300 rounded-full text-blue-700 text-xs hover:bg-blue-100"
+              >
+                + {sub}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {runningLowSuggestions.length > 0 && (
+        <div className="mt-4">
+          <h3 className="text-sm font-semibold text-gray-500 mb-2">You usually buy</h3>
+          <div className="flex flex-wrap gap-2">
+            {runningLowSuggestions.map((item) => (
+              <button
+                key={item}
+                onClick={() => handleQuickAdd(item)}
+                className="px-3 py-1 bg-white border border-gray-300 rounded-full text-gray-700 text-xs hover:bg-gray-100"
+              >
+                + {item}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {seasonalSuggestions.length > 0 && (
+        <div className="mt-4">
+          <h3 className="text-sm font-semibold text-gray-500 mb-2">In season / on sale</h3>
+          <div className="flex flex-wrap gap-2">
+            {seasonalSuggestions.map((s) => (
+              <button
+                key={s.name}
+                onClick={() => handleQuickAdd(s.name)}
+                className="px-3 py-1 bg-white border border-green-300 rounded-full text-green-700 text-xs hover:bg-green-100"
+              >
+                + {s.name} <span className="text-green-500">({s.note})</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="mt-6">
         <h2 className="text-lg font-semibold mb-2">Your List</h2>
         {Object.keys(groupedByCategory).length === 0 && (
           <p className="text-gray-400 text-sm">Your list is empty. Try saying "Add milk".</p>
         )}
-        {Object.entries(groupedByCategory).map(([category, items]) => (
+        {Object.entries(groupedByCategory).map(([category, catItems]) => (
           <div key={category} className="mb-4">
             <h3 className="text-sm font-semibold text-gray-500 uppercase mb-1">{category}</h3>
             <ul className="space-y-1">
-              {items.map((item) => (
+              {catItems.map((item) => (
                 <li key={item.id} className="flex justify-between bg-gray-50 px-3 py-2 rounded">
                   <span>{item.name}</span>
                   <span className="text-gray-500">x{item.quantity}</span>
