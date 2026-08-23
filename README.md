@@ -58,7 +58,21 @@ This was built end-to-end in a single sitting against a fixed time budget. Every
 | Hosting | Vercel | One-command deploy, automatic HTTPS (required for mic access), zero-config for Vite |
 
 ## How It Works
+```mermaid
+flowchart TD
+    A["🎤 User speaks"] --> B["Web Speech API<br/><small>Real-time transcription</small>"]
+    B --> C["parseCommand()<br/><small>Multilingual intent parsing</small>"]
+    C --> D["useShoppingList()<br/><small>Add, remove, categorize</small>"]
+    C --> E["searchProducts()<br/><small>Search mock catalog</small>"]
+    D --> F["App.jsx — React UI<br/><small>List, toasts, suggestion chips</small>"]
+    E --> F
 
+    style A fill:#F1EFE8,stroke:#5F5E5A,color:#2C2C2A
+    style B fill:#FAECE7,stroke:#993C1D,color:#4A1B0C
+    style C fill:#EEEDFE,stroke:#534AB7,color:#26215C
+    style D fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    style E fill:#FBEAF0,stroke:#993556,color:#4B1528
+    style F fill:#F1EFE8,stroke:#5F5E5A,color:#2C2C2A
 ```
 Mic tap → Web Speech API → transcript
                 ↓
