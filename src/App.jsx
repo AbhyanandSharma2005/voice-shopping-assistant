@@ -1,314 +1,335 @@
-/* App.css - Clean Voice Assistant Styles */
+import { useState, useEffect } from 'react'
+import './App.css'
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+// Mock implementations (replace with actual imports)
+const useSpeechRecognition = () => {
+  const [transcript, setTranscript] = useState('')
+  const [listening, setListening] = useState(false)
+  const [error, setError] = useState(null)
+
+  const startListening = () => {
+    setListening(true)
+    setTimeout(() => {
+      const demo = ['add milk', 'search for bananas', 'remove eggs', 'show cart']
+      setTranscript(demo[Math.floor(Math.random() * demo.length)])
+      setListening(false)
+    }, 2000)
+  }
+
+  return { transcript, listening, error, startListening }
 }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-  background: #f5f7fa;
-  color: #1a202c;
+const useShoppingList = () => {
+  const [items, setItems] = useState([
+    { id: 1, name: 'Milk', quantity: 2, category: 'Dairy' },
+    { id: 2, name: 'Eggs', quantity: 1, category: 'Dairy' },
+    { id: 3, name: 'Bread', quantity: 1, category: 'Bakery' },
+  ])
+  const [lastAction, setLastAction] = useState(null)
+
+  const groupedByCategory = items.reduce((acc, item) => {
+    if (!acc[item.category]) acc[item.category] = []
+    acc[item.category].push(item)
+    return acc
+  }, {})
+
+  const applyCommand = (parsed) => {
+    if (parsed.intent === 'ADD_ITEM') {
+      const existing = items.find(i => i.name.toLowerCase() === parsed.item.toLowerCase())
+      if (existing) {
+        setItems(items.map(i => 
+          i.id === existing.id ? { ...i, quantity: i.quantity + (parsed.quantity || 1) } : i
+        ))
+        setLastAction({ type: 'updated', name: parsed.item, quantity: existing.quantity + (parsed.quantity || 1) })
+      } else {
+        const newItem = { 
+          id: Date.now(), 
+          name: parsed.item, 
+          quantity: parsed.quantity || 1, 
+          category: 'Other' 
+        }
+        setItems([...items, newItem])
+        setLastAction({ type: 'added', name: parsed.item, quantity: parsed.quantity || 1 })
+      }
+    } else if (parsed.intent === 'REMOVE_ITEM') {
+      const existing = items.find(i => i.name.toLowerCase() === parsed.item.toLowerCase())
+      if (existing) {
+        if (existing.quantity > 1) {
+          setItems(items.map(i => 
+            i.id === existing.id ? { ...i, quantity: i.quantity - 1 } : i
+          ))
+          setLastAction({ type: 'updated', name: parsed.item, quantity: existing.quantity - 1 })
+        } else {
+          setItems(items.filter(i => i.id !== existing.id))
+          setLastAction({ type: 'removed', name: parsed.item })
+        }
+      } else {
+        setLastAction({ type: 'not_found', name: parsed.item })
+      }
+    } else if (parsed.intent === 'CLEAR_LIST') {
+      setItems([])
+      setLastAction({ type: 'cleared' })
+    } else if (parsed.intent === 'SHOW_CART') {
+      setLastAction({ type: 'shown', name: 'cart' })
+    } else {
+      setLastAction({ type: 'unknown' })
+    }
+  }
+
+  return { items, groupedByCategory, lastAction, applyCommand }
 }
 
-.app-container {
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 2rem 1rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+const parseCommand = (text) => {
+  const lower = text.toLowerCase().trim()
+  
+  const searchMatch = lower.match(/search for (.+)|search (.+)|find (.+)/i)
+  if (searchMatch) {
+    const query = searchMatch[1] || searchMatch[2] || searchMatch[3] || ''
+    return { intent: 'SEARCH_ITEM', query: query.trim(), raw: text }
+  }
+
+  const addMatch = lower.match(/add (\d+ )?(.+)|buy (\d+ )?(.+)|get (\d+ )?(.+)/i)
+  if (addMatch) {
+    const quantity = parseInt(addMatch[1] || addMatch[3] || addMatch[5] || '1')
+    const item = addMatch[2] || addMatch[4] || addMatch[6] || ''
+    return { intent: 'ADD_ITEM', item: item.trim(), quantity, raw: text }
+  }
+
+  const removeMatch = lower.match(/remove (.+)|delete (.+)|take off (.+)|forget (.+)/i)
+  if (removeMatch) {
+    return { intent: 'REMOVE_ITEM', item: (removeMatch[1] || removeMatch[2] || removeMatch[3] || removeMatch[4] || '').trim(), raw: text }
+  }
+
+  if (lower.includes('clear') || lower.includes('empty') || lower.includes('reset')) {
+    return { intent: 'CLEAR_LIST', raw: text }
+  }
+
+  if (lower.includes('show') || lower.includes('view') || lower.includes('what')) {
+    return { intent: 'SHOW_CART', raw: text }
+  }
+
+  return { intent: 'UNKNOWN', raw: text }
 }
 
-.voice-assistant {
-  max-width: 600px;
-  width: 100%;
-  background: white;
-  border-radius: 24px;
-  padding: 2rem;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+const searchProducts = (query, maxPrice) => {
+  const products = [
+    { id: 1, name: 'Bananas', brand: 'Chiquita', category: 'Fruit', price: 0.69 },
+    { id: 2, name: 'Apples', brand: 'Gala', category: 'Fruit', price: 1.29 },
+    { id: 3, name: 'Milk', brand: 'Horizon', category: 'Dairy', price: 3.99 },
+    { id: 4, name: 'Organic Milk', brand: 'Organic Valley', category: 'Dairy', price: 4.99 },
+    { id: 5, name: 'Bread', brand: 'Wonder', category: 'Bakery', price: 2.49 },
+    { id: 6, name: 'Whole Wheat Bread', brand: 'Nature\'s Own', category: 'Bakery', price: 3.29 },
+    { id: 7, name: 'Eggs', brand: 'Eggland\'s Best', category: 'Dairy', price: 2.99 },
+    { id: 8, name: 'Butter', brand: 'Land O\'Lakes', category: 'Dairy', price: 4.49 },
+    { id: 9, name: 'Chicken Breast', brand: 'Tyson', category: 'Meat', price: 5.99 },
+    { id: 10, name: 'Ground Beef', brand: 'Angus', category: 'Meat', price: 6.99 },
+  ]
+
+  let results = products.filter(p => 
+    p.name.toLowerCase().includes(query.toLowerCase()) ||
+    p.category.toLowerCase().includes(query.toLowerCase()) ||
+    p.brand.toLowerCase().includes(query.toLowerCase())
+  )
+
+  if (maxPrice) {
+    results = results.filter(p => p.price <= maxPrice)
+  }
+
+  return results
 }
 
-.title {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 1.5rem;
-  text-align: center;
-  color: #2d3748;
+const getSubstitutes = (itemName) => {
+  const substitutes = {
+    'milk': ['Almond Milk', 'Oat Milk', 'Soy Milk'],
+    'butter': ['Margarine', 'Coconut Oil', 'Olive Oil'],
+    'eggs': ['Egg Substitute', 'Applesauce', 'Flax Eggs'],
+    'bread': ['Gluten-Free Bread', 'Tortillas', 'Lettuce Wraps'],
+  }
+  const key = Object.keys(substitutes).find(k => itemName.toLowerCase().includes(k))
+  return key ? substitutes[key] : []
 }
 
-.mic-button {
-  width: 100%;
-  padding: 1rem;
-  font-size: 1.125rem;
-  font-weight: 600;
-  border: none;
-  border-radius: 50px;
-  background: #4299e1;
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s;
+const getSeasonalSuggestions = (currentItems) => {
+  const suggestions = [
+    { name: 'Strawberries', note: 'in season' },
+    { name: 'Asparagus', note: 'on sale' },
+    { name: 'Avocados', note: 'in season' },
+  ]
+  return suggestions.filter(s => !currentItems.includes(s.name))
 }
 
-.mic-button:hover:not(:disabled) {
-  background: #3182ce;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(66, 153, 225, 0.4);
+const getRunningLowSuggestions = (currentItems) => {
+  const common = ['Milk', 'Bread', 'Eggs', 'Butter', 'Cheese']
+  return common.filter(c => !currentItems.includes(c))
 }
 
-.mic-button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
+function App() {
+  const { transcript, listening, error, startListening } = useSpeechRecognition()
+  const { items, groupedByCategory, lastAction, applyCommand } = useShoppingList()
+  const [searchResults, setSearchResults] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  useEffect(() => {
+    if (!transcript) return
+    
+    const parsed = parseCommand(transcript)
+    
+    if (parsed.intent === 'SEARCH_ITEM') {
+      const results = searchProducts(parsed.query)
+      setSearchResults(results)
+      setSearchQuery(parsed.query)
+    } else {
+      setSearchResults(null)
+      applyCommand(parsed)
+    }
+  }, [transcript, applyCommand])
+
+  const handleAddFromSearch = (product) => {
+    applyCommand({ 
+      intent: 'ADD_ITEM', 
+      item: product.name, 
+      quantity: 1, 
+      raw: `from search: ${product.name}` 
+    })
+    setSearchResults(null)
+  }
+
+  const handleQuickAdd = (name) => {
+    applyCommand({ 
+      intent: 'ADD_ITEM', 
+      item: name, 
+      quantity: 1, 
+      raw: `quick-add: ${name}` 
+    })
+  }
+
+  const currentItemNames = items.map((i) => i.name)
+  const seasonalSuggestions = getSeasonalSuggestions(currentItemNames)
+  const runningLowSuggestions = getRunningLowSuggestions(currentItemNames)
+  const substitutesForLastAdd = 
+    lastAction?.type === 'added' ? getSubstitutes(lastAction.name) : []
+
+  return (
+    <div className="app-container">
+      <div className="voice-assistant">
+        <h1 className="title">🛒 Voice Shopping Assistant</h1>
+
+        <button
+          onClick={startListening}
+          disabled={listening}
+          className={`mic-button ${listening ? 'listening' : ''}`}
+        >
+          {listening ? '🎤 Listening...' : '🎤 Tap to speak'}
+        </button>
+
+        {error && <p className="error">{error}</p>}
+
+        <div className="transcript">
+          <span className="label">Heard:</span> "{transcript || 'Nothing yet'}"
+        </div>
+
+        {searchResults !== null && (
+          <div className="search-results">
+            <h3>Search results for "{searchQuery}"</h3>
+            {searchResults.length === 0 ? (
+              <p className="no-results">No products matched that search.</p>
+            ) : (
+              <ul>
+                {searchResults.map((product) => (
+                  <li key={product.id}>
+                    <div>
+                      <p className="product-name">{product.name}</p>
+                      <p className="product-details">{product.brand} · {product.category}</p>
+                    </div>
+                    <div>
+                      <span className="price">${product.price.toFixed(2)}</span>
+                      <button onClick={() => handleAddFromSearch(product)}>
+                        Add
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <button className="clear-search" onClick={() => setSearchResults(null)}>
+              Clear search
+            </button>
+          </div>
+        )}
+
+        {lastAction && (
+          <div className={`confirmation ${lastAction.type}`}>
+            {lastAction.type === 'added' && `Added ${lastAction.quantity} ${lastAction.name} ✓`}
+            {lastAction.type === 'updated' && `${lastAction.name} quantity updated to ${lastAction.quantity} ✓`}
+            {lastAction.type === 'removed' && `Removed ${lastAction.name} ✓`}
+            {lastAction.type === 'not_found' && `"${lastAction.name}" wasn't on your list`}
+            {lastAction.type === 'cleared' && `List cleared ✓`}
+            {lastAction.type === 'shown' && `Showing your cart ✓`}
+            {lastAction.type === 'unknown' && `Sorry, I didn't understand that`}
+          </div>
+        )}
+
+        {substitutesForLastAdd.length > 0 && (
+          <div className="suggestions substitutes">
+            <span>Prefer an alternative to {lastAction.name}?</span>
+            <div>
+              {substitutesForLastAdd.map((sub) => (
+                <button key={sub} onClick={() => handleQuickAdd(sub)}>
+                  + {sub}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {runningLowSuggestions.length > 0 && (
+          <div className="suggestions">
+            <h3>You usually buy</h3>
+            <div>
+              {runningLowSuggestions.map((item) => (
+                <button key={item} onClick={() => handleQuickAdd(item)}>
+                  + {item}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {seasonalSuggestions.length > 0 && (
+          <div className="suggestions seasonal">
+            <h3>In season / on sale</h3>
+            <div>
+              {seasonalSuggestions.map((s) => (
+                <button key={s.name} onClick={() => handleQuickAdd(s.name)}>
+                  + {s.name} <span>({s.note})</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="shopping-list">
+          <h2>Your List</h2>
+          {Object.keys(groupedByCategory).length === 0 && (
+            <p className="empty-list">Your list is empty. Try saying "Add milk".</p>
+          )}
+          {Object.entries(groupedByCategory).map(([category, catItems]) => (
+            <div key={category}>
+              <h3>{category}</h3>
+              <ul>
+                {catItems.map((item) => (
+                  <li key={item.id}>
+                    <span>{item.name}</span>
+                    <span>x{item.quantity}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
 }
 
-.mic-button.listening {
-  background: #f56565;
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.02); }
-}
-
-.error {
-  margin-top: 1rem;
-  padding: 0.75rem;
-  background: #fed7d7;
-  color: #c53030;
-  border-radius: 8px;
-  font-size: 0.875rem;
-}
-
-.transcript {
-  margin-top: 1rem;
-  padding: 0.75rem;
-  background: #f7fafc;
-  border-radius: 8px;
-  font-size: 0.95rem;
-}
-
-.transcript .label {
-  font-weight: 600;
-  color: #4a5568;
-}
-
-.search-results {
-  margin-top: 1.5rem;
-  padding: 1rem;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  background: #f7fafc;
-}
-
-.search-results h3 {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #2d3748;
-  margin-bottom: 0.75rem;
-}
-
-.search-results ul {
-  list-style: none;
-  padding: 0;
-}
-
-.search-results li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem;
-  background: white;
-  border-radius: 8px;
-  margin-bottom: 0.5rem;
-  border: 1px solid #e2e8f0;
-}
-
-.product-name {
-  font-weight: 500;
-  color: #2d3748;
-}
-
-.product-details {
-  font-size: 0.8rem;
-  color: #718096;
-}
-
-.price {
-  font-weight: 600;
-  color: #2d3748;
-  margin-right: 0.75rem;
-}
-
-.search-results button {
-  padding: 0.25rem 0.75rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  border: none;
-  border-radius: 20px;
-  background: #4299e1;
-  color: white;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.search-results button:hover {
-  background: #3182ce;
-}
-
-.clear-search {
-  margin-top: 0.5rem;
-  background: transparent !important;
-  color: #a0aec0 !important;
-  font-size: 0.8rem;
-  padding: 0.25rem 0.5rem !important;
-}
-
-.clear-search:hover {
-  color: #718096 !important;
-  background: transparent !important;
-}
-
-.no-results {
-  color: #a0aec0;
-  font-size: 0.9rem;
-  text-align: center;
-}
-
-.confirmation {
-  margin-top: 1rem;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  font-weight: 500;
-  font-size: 0.95rem;
-}
-
-.confirmation.added,
-.confirmation.updated,
-.confirmation.cleared,
-.confirmation.shown {
-  background: #c6f6d5;
-  color: #22543d;
-  border: 1px solid #9ae6b4;
-}
-
-.confirmation.removed {
-  background: #fed7d7;
-  color: #9b2c2c;
-  border: 1px solid #feb2b2;
-}
-
-.confirmation.not_found {
-  background: #fefcbf;
-  color: #744210;
-  border: 1px solid #f6e05e;
-}
-
-.confirmation.unknown {
-  background: #e2e8f0;
-  color: #4a5568;
-  border: 1px solid #cbd5e0;
-}
-
-.suggestions {
-  margin-top: 1.5rem;
-}
-
-.suggestions h3 {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #718096;
-  margin-bottom: 0.5rem;
-}
-
-.suggestions div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.suggestions button {
-  padding: 0.375rem 0.875rem;
-  font-size: 0.85rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 20px;
-  background: white;
-  color: #2d3748;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.suggestions button:hover {
-  background: #edf2f7;
-  border-color: #4299e1;
-}
-
-.suggestions.substitutes {
-  padding: 0.75rem 1rem;
-  background: #ebf8ff;
-  border: 1px solid #bee3f8;
-  border-radius: 8px;
-}
-
-.suggestions.substitutes span {
-  display: block;
-  margin-bottom: 0.5rem;
-  color: #2b6cb0;
-  font-weight: 500;
-  font-size: 0.9rem;
-}
-
-.suggestions.seasonal button {
-  border-color: #9ae6b4;
-  color: #276749;
-}
-
-.suggestions.seasonal button span {
-  color: #48bb78;
-  font-size: 0.7rem;
-}
-
-.shopping-list {
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 2px solid #e2e8f0;
-}
-
-.shopping-list h2 {
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin-bottom: 1rem;
-  color: #2d3748;
-}
-
-.shopping-list h3 {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #a0aec0;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
-}
-
-.shopping-list ul {
-  list-style: none;
-  padding: 0;
-}
-
-.shopping-list li {
-  display: flex;
-  justify-content: space-between;
-  padding: 0.5rem 0.75rem;
-  background: #f7fafc;
-  border-radius: 6px;
-  margin-bottom: 0.25rem;
-}
-
-.empty-list {
-  color: #a0aec0;
-  font-size: 0.95rem;
-  text-align: center;
-  padding: 1.5rem 0;
-}
+export default App
