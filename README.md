@@ -2,8 +2,8 @@
 
 A voice-controlled shopping list manager with smart, rule-based suggestions — built as a scoped technical assessment within an 8–12 hour time budget.
 
-**🔗 Live App:** [your-vercel-url-here](https://your-app.vercel.app)
-**📦 Repo:** [github.com/your-username/voice-shopping-assistant](https://github.com/your-username/voice-shopping-assistant)
+**🔗 Live App:** [https://voice-shopping-assistant-blush.vercel.app/](https://voice-shopping-assistant-blush.vercel.app/)
+**📦 Repo:** [https://github.com/AbhyanandSharma2005/voice-shopping-assistant](https://github.com/AbhyanandSharma2005/voice-shopping-assistant)
 
 > Best experienced in **Chrome desktop or Chrome for Android** — see [Browser Support](#browser-support) below.
 
