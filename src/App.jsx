@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from './assets/vite.svg'
 import heroImg from './assets/hero.png'
 import './App.css'
 
-// You'll need to create these files:
-// - ./hooks/useSpeechRecognition.js
-// - ./utils/parseCommand.js
+// Import your actual hooks and utilities
+// import { useSpeechRecognition } from './hooks/useSpeechRecognition'
+// import { parseCommand } from './utils/parseCommand'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -16,64 +16,129 @@ function App() {
   const [listening, setListening] = useState(false)
   const [error, setError] = useState(null)
   const [log, setLog] = useState([])
+  const [recognition, setRecognition] = useState(null)
 
-  // Mock speech recognition (replace with actual implementation)
-  const startListening = () => {
-    setListening(true)
-    setError(null)
+  // Initialize speech recognition
+  useEffect(() => {
+    // Check browser support
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     
-    // Check if browser supports speech recognition
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    if (!SpeechRecognition) {
       setError('Speech recognition not supported in this browser')
-      setListening(false)
       return
     }
 
-    // Simulate listening for demo purposes
-    // In production, use the actual Web Speech API
-    setTimeout(() => {
-      const demoTranscripts = [
-        'add apples to cart',
-        'remove bananas',
-        'checkout',
-        'show my cart',
-        'add milk'
-      ]
-      const randomTranscript = demoTranscripts[Math.floor(Math.random() * demoTranscripts.length)]
-      setTranscript(randomTranscript)
-      setListening(false)
+    const recognitionInstance = new SpeechRecognition()
+    recognitionInstance.lang = 'en-US'
+    recognitionInstance.continuous = false
+    recognitionInstance.interimResults = false
+    recognitionInstance.maxAlternatives = 1
+
+    recognitionInstance.onresult = (event) => {
+      const result = event.results[0][0]
+      const transcriptText = result.transcript
+      const confidence = result.confidence
       
-      // Parse the command
-      const parsed = parseCommand(randomTranscript)
-      setLog(prev => [...prev, parsed])
-    }, 2000)
-  }
-
-  // Mock parseCommand function (replace with your actual implementation)
-  const parseCommand = (text) => {
-    const lower = text.toLowerCase()
-    if (lower.includes('add')) {
-      return { action: 'add', item: text.replace('add', '').trim(), raw: text }
-    } else if (lower.includes('remove')) {
-      return { action: 'remove', item: text.replace('remove', '').trim(), raw: text }
-    } else if (lower.includes('checkout')) {
-      return { action: 'checkout', raw: text }
-    } else if (lower.includes('show')) {
-      return { action: 'show_cart', raw: text }
-    } else {
-      return { action: 'unknown', raw: text }
+      console.log('Transcript:', transcriptText, 'Confidence:', confidence)
+      
+      // Optional: Filter low confidence results (noise)
+      if (confidence < 0.5) {
+        console.log('Low confidence, ignoring...')
+        return
+      }
+      
+      setTranscript(transcriptText)
+      setListening(false)
     }
+
+    recognitionInstance.onerror = (event) => {
+      console.error('Speech recognition error:', event.error)
+      setError(`Error: ${event.error}`)
+      setListening(false)
+    }
+
+    recognitionInstance.onend = () => {
+      setListening(false)
+    }
+
+    setRecognition(recognitionInstance)
+
+    // Cleanup
+    return () => {
+      if (recognitionInstance) {
+        recognitionInstance.abort()
+      }
+    }
+  }, [])
+
+  // Parse command whenever transcript changes (fixed with useEffect)
+  useEffect(() => {
+    if (!transcript) return
+    
+    const parsed = parseCommand(transcript)
+    setLog((prev) => [...prev, parsed])
+  }, [transcript]) // Only runs when transcript actually changes
+
+  const startListening = () => {
+    if (!recognition) {
+      setError('Speech recognition not initialized')
+      return
+    }
+
+    if (listening) {
+      console.log('Already listening...')
+      return
+    }
+
+    setError(null)
+    setListening(true)
+    recognition.start()
   }
 
-  const handleMicClick = () => {
-    if (!listening) {
-      startListening()
+  // Mock parseCommand (replace with your actual import)
+  const parseCommand = (text) => {
+    const lower = text.toLowerCase().trim()
+    
+    if (lower.includes('add') || lower.includes('buy')) {
+      const item = lower.replace(/add|buy/i, '').trim()
+      return { 
+        action: 'add', 
+        item: item || 'unknown item', 
+        raw: text,
+        timestamp: new Date().toISOString()
+      }
+    } else if (lower.includes('remove') || lower.includes('delete')) {
+      const item = lower.replace(/remove|delete/i, '').trim()
+      return { 
+        action: 'remove', 
+        item: item || 'unknown item', 
+        raw: text,
+        timestamp: new Date().toISOString()
+      }
+    } else if (lower.includes('checkout') || lower.includes('pay')) {
+      return { 
+        action: 'checkout', 
+        raw: text,
+        timestamp: new Date().toISOString()
+      }
+    } else if (lower.includes('show') || lower.includes('view') || lower.includes('cart')) {
+      return { 
+        action: 'show_cart', 
+        raw: text,
+        timestamp: new Date().toISOString()
+      }
+    } else {
+      return { 
+        action: 'unknown', 
+        raw: text,
+        timestamp: new Date().toISOString()
+      }
     }
   }
 
   return (
     <>
-      {/* Original Hero Section */}
+      {/* Hero Section */}
       <section id="center">
         <div className="hero">
           <img src={heroImg} className="base" width="170" height="179" alt="" />
@@ -97,30 +162,60 @@ function App() {
 
       <div className="ticks"></div>
 
-      {/* Voice Shopping Assistant Section */}
+      {/* Voice Shopping Assistant - Fixed Version */}
       <section id="voice-assistant" className="p-6 max-w-md mx-auto mt-8">
         <h2 className="text-2xl font-bold mb-4">Voice Shopping Assistant</h2>
+        
         <button
-          onClick={handleMicClick}
-          className={`px-6 py-3 rounded-full text-white ${
-            listening ? 'bg-red-500 animate-pulse' : 'bg-blue-600'
-          }`}
+          onClick={startListening}
           disabled={listening}
+          className={`px-6 py-3 rounded-full text-white font-semibold transition-all ${
+            listening 
+              ? 'bg-red-500 animate-pulse cursor-not-allowed' 
+              : 'bg-blue-600 hover:bg-blue-700'
+          }`}
         >
-          {listening ? 'Listening...' : '🎤 Tap to speak'}
+          {listening ? '🎤 Listening...' : '🎤 Tap to speak'}
         </button>
-        {error && <p className="text-red-600 mt-2">{error}</p>}
-        <p className="mt-4 text-gray-600">Heard: "{transcript}"</p>
-        {log.length > 0 && (
-          <pre className="mt-4 bg-gray-100 p-3 rounded text-sm overflow-auto">
-            {JSON.stringify(log[log.length - 1], null, 2)}
+        
+        {error && (
+          <p className="text-red-600 mt-2 text-sm">{error}</p>
+        )}
+        
+        <div className="mt-4">
+          <p className="text-gray-600">
+            <span className="font-medium">Heard:</span> "{transcript || 'Nothing yet'}"
+          </p>
+        </div>
+        
+        <div className="mt-4">
+          <h3 className="font-semibold text-gray-700 mb-2">Last Command:</h3>
+          <pre className="bg-gray-100 p-3 rounded text-sm overflow-auto max-h-32">
+            {log.length > 0 
+              ? JSON.stringify(log[log.length - 1], null, 2) 
+              : 'No commands yet'}
           </pre>
+        </div>
+
+        {log.length > 1 && (
+          <div className="mt-4">
+            <h3 className="font-semibold text-gray-700 mb-2">Command History:</h3>
+            <div className="max-h-40 overflow-auto bg-gray-50 p-2 rounded text-sm">
+              {log.map((entry, index) => (
+                <div key={index} className="border-b border-gray-200 py-1">
+                  <span className="text-gray-500">{index + 1}.</span>{' '}
+                  <span className="font-medium">{entry.action}:</span>{' '}
+                  {entry.item || entry.raw}
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </section>
 
       <div className="ticks"></div>
 
-      {/* Original Next Steps Section */}
+      {/* Next Steps Section */}
       <section id="next-steps">
         <div id="docs">
           <svg className="icon" role="presentation" aria-hidden="true">
