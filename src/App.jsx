@@ -24,7 +24,7 @@ function App() {
   // Parse each new transcript into a command and act on it
   useEffect(() => {
     if (!transcript) return;
-    const parsed = parseCommand(transcript);
+    const parsed = parseCommand(transcript, selectedLang);
 
     if (parsed.intent === 'SEARCH_ITEM') {
       setSearching(true);
@@ -41,7 +41,7 @@ function App() {
       setSearching(false);
       applyCommand(parsed);
     }
-  }, [transcript, applyCommand]);
+  }, [transcript, applyCommand, selectedLang]);
 
   // Auto-dismiss the confirmation toast after 4 seconds
   useEffect(() => {
