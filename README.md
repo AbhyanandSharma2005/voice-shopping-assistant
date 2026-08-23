@@ -74,19 +74,6 @@ flowchart TD
     style E fill:#FBEAF0,stroke:#993556,color:#4B1528
     style F fill:#F1EFE8,stroke:#5F5E5A,color:#2C2C2A
 ```
-Mic tap → Web Speech API → transcript
-                ↓
-   parseCommand(transcript, language)
-                ↓
-     { intent, item, quantity, query, maxPrice }
-                ↓
-        ┌───────┴────────┐
-        ↓                ↓
-  applyCommand()    searchProducts()
-  (list state)      (mock catalog)
-        ↓                ↓
-   UI re-renders: list, toast, suggestions, or search results
-```
 
 The parser is language-aware: each supported locale (`en-US`, `hi-IN`, `es-ES`, `fr-FR`) has its own keyword dictionary for recognizing add/remove/search/clear/list verbs, so both **speech-to-text and command understanding** work across languages — not just transcription.
 
