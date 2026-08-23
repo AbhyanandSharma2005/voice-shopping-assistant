@@ -34,6 +34,8 @@ export function useSpeechRecognition(lang = 'en-US') {
         setError('Microphone permission denied. Please allow mic access.');
       } else if (event.error === 'no-speech') {
         setError('No speech detected. Try again.');
+      } else if (event.error === 'network') {
+        setError('Network error reaching speech service. Check your connection or try a different network.');
       } else {
         setError(`Error: ${event.error}`);
       }
