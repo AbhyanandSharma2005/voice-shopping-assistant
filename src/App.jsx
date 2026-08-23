@@ -10,20 +10,38 @@ function App() {
   const { items, groupedByCategory, lastAction, applyCommand } = useShoppingList();
   const [searchResults, setSearchResults] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [showToast, setShowToast] = useState(false);
 
+  // Parse each new transcript into a command and act on it
   useEffect(() => {
     if (!transcript) return;
     const parsed = parseCommand(transcript);
 
     if (parsed.intent === 'SEARCH_ITEM') {
-      const results = searchProducts(parsed.query, parsed.maxPrice);
-      setSearchResults(results);
+      setSearching(true);
       setSearchQuery(parsed.query);
+      setSearchResults(null);
+      const timer = setTimeout(() => {
+        const results = searchProducts(parsed.query, parsed.maxPrice);
+        setSearchResults(results);
+        setSearching(false);
+      }, 400);
+      return () => clearTimeout(timer);
     } else {
       setSearchResults(null);
+      setSearching(false);
       applyCommand(parsed);
     }
   }, [transcript, applyCommand]);
+
+  // Auto-dismiss the confirmation toast after 4 seconds
+  useEffect(() => {
+    if (!lastAction) return;
+    setShowToast(true);
+    const timer = setTimeout(() => setShowToast(false), 4000);
+    return () => clearTimeout(timer);
+  }, [lastAction]);
 
   const currentItemNames = items.map((i) => i.name);
   const seasonalSuggestions = getSeasonalSuggestions(currentItemNames);
@@ -41,20 +59,29 @@ function App() {
   };
 
   return (
-    <div className="p-6 max-w-md mx-auto mt-8">
+    <div className="p-4 sm:p-6 max-w-md mx-auto mt-6 sm:mt-8">
       <h1 className="text-2xl font-bold mb-4">🛒 Voice Shopping Assistant</h1>
 
-      <button
-        onClick={startListening}
-        disabled={listening}
-        className={`px-6 py-3 rounded-full text-white font-semibold transition-all ${
-          listening
-            ? 'bg-red-500 animate-pulse cursor-not-allowed'
-            : 'bg-blue-600 hover:bg-blue-700'
-        }`}
-      >
-        {listening ? '🎤 Listening...' : '🎤 Tap to speak'}
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={startListening}
+          disabled={listening}
+          className={`px-6 py-3 rounded-full text-white font-semibold transition-all ${
+            listening
+              ? 'bg-red-500 animate-pulse cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
+          }`}
+        >
+          {listening ? '🎤 Listening...' : '🎤 Tap to speak'}
+        </button>
+        {listening && (
+          <span className="flex gap-1">
+            <span className="w-1.5 h-4 bg-red-400 rounded animate-bounce [animation-delay:-0.3s]"></span>
+            <span className="w-1.5 h-4 bg-red-400 rounded animate-bounce [animation-delay:-0.15s]"></span>
+            <span className="w-1.5 h-4 bg-red-400 rounded animate-bounce"></span>
+          </span>
+        )}
+      </div>
 
       {error && <p className="text-red-600 mt-2 text-sm">{error}</p>}
 
@@ -64,7 +91,11 @@ function App() {
         </p>
       </div>
 
-      {searchResults !== null && (
+      {searching && (
+        <div className="mt-4 text-sm text-gray-400">Searching...</div>
+      )}
+
+      {!searching && searchResults !== null && (
         <div className="mt-4 border border-gray-200 rounded p-3">
           <h3 className="text-sm font-semibold text-gray-700 mb-2">
             Search results for "{searchQuery}"
@@ -104,8 +135,8 @@ function App() {
         </div>
       )}
 
-      {lastAction && (
-        <div className="mt-3 px-3 py-2 bg-green-50 border border-green-200 rounded text-sm text-green-800">
+      {lastAction && showToast && (
+        <div className="mt-3 px-3 py-2 bg-green-50 border border-green-200 rounded text-sm text-green-800 transition-opacity">
           {lastAction.type === 'added' && `Added ${lastAction.quantity} ${lastAction.name} ✓`}
           {lastAction.type === 'updated' && `${lastAction.name} quantity updated to ${lastAction.quantity} ✓`}
           {lastAction.type === 'removed' && `Removed ${lastAction.name} ✓`}
