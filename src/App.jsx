@@ -5,8 +5,16 @@ import { parseCommand } from './utils/parseCommand';
 import { getSubstitutes, getSeasonalSuggestions, getRunningLowSuggestions } from './utils/suggestions';
 import { searchProducts } from './utils/searchProducts';
 
+const LANGUAGES = [
+  { code: 'en-US', label: 'English' },
+  { code: 'hi-IN', label: 'हिंदी (Hindi)' },
+  { code: 'es-ES', label: 'Español (Spanish)' },
+  { code: 'fr-FR', label: 'Français (French)' },
+];
+
 function App() {
-  const { transcript, listening, error, startListening } = useSpeechRecognition();
+  const [selectedLang, setSelectedLang] = useState('en-US');
+  const { transcript, listening, error, startListening } = useSpeechRecognition(selectedLang);
   const { items, groupedByCategory, lastAction, applyCommand } = useShoppingList();
   const [searchResults, setSearchResults] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -61,6 +69,22 @@ function App() {
   return (
     <div className="p-4 sm:p-6 max-w-md mx-auto mt-6 sm:mt-8">
       <h1 className="text-2xl font-bold mb-4">🛒 Voice Shopping Assistant</h1>
+
+      <div className="mb-3">
+        <label className="text-xs text-gray-500 mr-2">Language:</label>
+        <select
+          value={selectedLang}
+          onChange={(e) => setSelectedLang(e.target.value)}
+          disabled={listening}
+          className="text-sm border border-gray-300 rounded px-2 py-1"
+        >
+          {LANGUAGES.map((lang) => (
+            <option key={lang.code} value={lang.code}>
+              {lang.label}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <div className="flex items-center gap-3">
         <button
