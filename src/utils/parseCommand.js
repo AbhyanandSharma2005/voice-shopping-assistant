@@ -5,33 +5,82 @@ const NUMBER_WORDS = {
   six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
 };
 
+// Per-language keyword sets. Each language defines regex patterns for each
+// intent, plus a "fillers" regex used to strip command words out of the
+// remaining text so what's left is (hopefully) just the item name.
+//
+// Coverage note: this is a curated keyword list per language, not a real
+// translation/NLU model. It covers common phrasings but will miss anything
+// outside these word lists — documented as a known limitation.
+const LANG_PATTERNS = {
+  'en-US': {
+    add: /\b(add|need|buy|want)\b/i,
+    remove: /\b(remove|delete|take off|get rid of)\b/i,
+    search: /\b(find|search|look for)\b/i,
+    clear: /\b(clear|empty)\b.*\blist\b/i,
+    list: /\b(what's on|show|read)\b.*\blist\b/i,
+    fillers: /\b(add|need|buy|want to buy|i want|i need|to my list|to the list|bottles? of|please)\b/gi,
+    under: /under\s*\$?(\d+)/i,
+  },
+  'hi-IN': {
+    add: /(जोड़ो|जोड़ें|डालो|चाहिए|खरीदना|खरीदो|खरीदना है)/,
+    remove: /(हटाओ|निकालो|हटाएं|हटा दो)/,
+    search: /(ढूंढो|खोजो|ढूंढें|खोज)/,
+    clear: /(साफ|खाली).*सूची/,
+    list: /(सूची दिखाओ|मेरी सूची|लिस्ट दिखाओ)/,
+    fillers: /(जोड़ो|जोड़ें|डालो|चाहिए|खरीदना है|खरीदना|खरीदो|मेरी सूची में|कृपया|से)/g,
+    under: /(\d+)\s*(रुपये|रुपए)?\s*से\s*कम/,
+  },
+  'es-ES': {
+    add: /\b(añade|agrega|necesito|quiero|compra)\b/i,
+    remove: /\b(quita|elimina|borra|saca)\b/i,
+    search: /\b(busca|encuentra|buscar)\b/i,
+    clear: /\b(vacía|limpia|borra)\b.*\blista\b/i,
+    list: /\b(muestra|ver)\b.*\blista\b/i,
+    fillers: /\b(añade|agrega|necesito|quiero|compra|a mi lista|de la lista|por favor)\b/gi,
+    under: /menos de\s*\$?(\d+)/i,
+  },
+  'fr-FR': {
+    add: /\b(ajoute|ajouter|besoin|veux|achète)\b/i,
+    remove: /\b(enlève|supprime|retire|enlever)\b/i,
+    search: /\b(cherche|trouve|chercher)\b/i,
+    clear: /\b(vide|efface)\b.*\bliste\b/i,
+    list: /\b(montre|affiche)\b.*\bliste\b/i,
+    fillers: /\b(ajoute|ajouter|besoin|veux|achète|à ma liste|de la liste|s'il te plaît)\b/gi,
+    under: /moins de\s*\$?(\d+)/i,
+  },
+};
+
 function extractQuantity(text) {
   const digitMatch = text.match(/\b(\d+)\b/);
   if (digitMatch) return parseInt(digitMatch[1], 10);
 
+  // Word-number matching is English-only for now — digits ("2", "5") work
+  // in every language since they're not translated by speech recognition.
   for (const [word, num] of Object.entries(NUMBER_WORDS)) {
     if (new RegExp(`\\b${word}\\b`, 'i').test(text)) return num;
   }
-  return 1; // default quantity
+  return 1;
 }
 
-function cleanItemName(text) {
+function cleanItemName(text, patterns) {
   return text
     .replace(/\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b/gi, '')
-    .replace(/\b(add|need|buy|want to buy|i want|i need|to my list|to the list|bottles? of|please)\b/gi, '')
+    .replace(patterns.fillers, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-export function parseCommand(rawText) {
+export function parseCommand(rawText, langCode = 'en-US') {
+  const patterns = LANG_PATTERNS[langCode] || LANG_PATTERNS['en-US'];
   const text = rawText.toLowerCase().trim();
 
-  // SEARCH_ITEM: "find X", "search for X", with optional price filter
-  if (/\b(find|search|look for)\b/.test(text)) {
-    const priceMatch = text.match(/under\s*\$?(\d+)/);
+  // SEARCH_ITEM
+  if (patterns.search.test(text)) {
+    const priceMatch = text.match(patterns.under);
     const query = text
-      .replace(/\b(find|search for|search|look for)\b/g, '')
-      .replace(/under\s*\$?\d+/, '')
+      .replace(patterns.search, '')
+      .replace(patterns.under, '')
       .trim();
     return {
       intent: 'SEARCH_ITEM',
@@ -41,27 +90,26 @@ export function parseCommand(rawText) {
     };
   }
 
-  // REMOVE_ITEM: "remove X", "delete X", "take X off"
-  if (/\b(remove|delete|take off|get rid of)\b/.test(text)) {
-    const itemName = cleanItemName(text.replace(/\b(remove|delete|take off|get rid of)\b/g, ''));
+  // REMOVE_ITEM
+  if (patterns.remove.test(text)) {
+    const itemName = cleanItemName(text.replace(patterns.remove, ''), patterns);
     return { intent: 'REMOVE_ITEM', item: itemName, raw: rawText };
   }
 
   // CLEAR_LIST
-  if (/\b(clear|empty)\b.*\blist\b/.test(text)) {
+  if (patterns.clear.test(text)) {
     return { intent: 'CLEAR_LIST', raw: rawText };
   }
 
-  // LIST_ITEMS: "what's on my list", "show my list"
-  if (/\b(what's on|show|read)\b.*\blist\b/.test(text)) {
+  // LIST_ITEMS
+  if (patterns.list.test(text)) {
     return { intent: 'LIST_ITEMS', raw: rawText };
   }
 
-  // ADD_ITEM: "add X", "I need X", "I want to buy X" — the default/fallback for anything
-  // mentioning an item-like phrase
-  if (/\b(add|need|buy|want)\b/.test(text)) {
+  // ADD_ITEM — fallback default for anything with an add-type verb
+  if (patterns.add.test(text)) {
     const quantity = extractQuantity(text);
-    const itemName = cleanItemName(text);
+    const itemName = cleanItemName(text, patterns);
     if (itemName) {
       return { intent: 'ADD_ITEM', item: itemName, quantity, raw: rawText };
     }
