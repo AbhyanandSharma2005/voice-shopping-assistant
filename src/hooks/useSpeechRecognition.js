@@ -1,3 +1,4 @@
+// src/hooks/useSpeechRecognition.js
 import { useState, useRef, useCallback } from 'react';
 
 export function useSpeechRecognition(lang = 'en-US') {
