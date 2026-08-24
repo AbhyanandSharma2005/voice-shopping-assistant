@@ -62,8 +62,8 @@ function cleanItemName(text, patterns) {
     .trim();
 }
 
-// 1. Rename your old function to be the fallback
-function fallbackParseCommand(rawText, langCode = 'en-US') {
+// 1. Exported the fallback function so it can be tested with Vitest
+export function fallbackParseCommand(rawText, langCode = 'en-US') {
   console.log("Using Regex Fallback Parser");
   const patterns = LANG_PATTERNS[langCode] || LANG_PATTERNS['en-US'];
   const text = rawText.toLowerCase().trim();
