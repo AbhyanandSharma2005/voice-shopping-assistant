@@ -26,7 +26,7 @@ A voice-controlled shopping list manager with smart, rule-based suggestions — 
 
 ## What This Is
 
-A mobile-first, voice-first shopping list app: speak a command, it's parsed into an intent, and your list updates in real time — with categorization, substitute suggestions, seasonal picks, and voice-activated product search layered on top.
+A mobile-first, voice-first shopping list app: speak a command, it's parsed into an intent, and your list updates in real time — with categorization, substitute suggestions, seasonal picks, and voice-activated product search layered on top. 
 
 This was built end-to-end in a single sitting against a fixed time budget. Every simplification below is a **deliberate scope decision**, not an oversight — full reasoning is in [Known Limitations](#known-limitations--design-decisions).
 
@@ -34,38 +34,44 @@ This was built end-to-end in a single sitting against a fixed time budget. Every
 
 | Area | What's implemented |
 |---|---|
-| **Voice input** | Real browser speech-to-text (Web Speech API) — no external API keys needed |
-| **NLP / intent parsing** | Rule-based parser recognizing add, remove, search, clear, and list commands across varied phrasings ("add milk", "I need apples", "I want to buy bananas") |
-| **Multilingual** | Speech recognition **and** command parsing work in English, Hindi, हिंदी, Spanish, and French — switchable via a language dropdown |
-| **Quantity parsing** | Handles both digits ("2 bottles of water") and number words ("add three tomatoes") |
-| **Auto-categorization** | Items sorted into Dairy, Produce, Bakery, Snacks, Beverages, Meat & Seafood, Pantry, Household, or Other |
-| **Substitute suggestions** | Prompts alternatives when you add certain items (e.g. milk → almond/oat/soy milk) |
-| **Seasonal suggestions** | Static "in season / on sale" chips, dismiss automatically once added |
-| **"You usually buy"** | Simulated purchase-pattern suggestions for common staples |
-| **Voice-activated search** | Search a 35-item mock product catalog by name, brand, or category, with "under $X" price filtering |
-| **Visual feedback** | Live transcript display, listening animation, auto-dismissing confirmation toasts, search loading state |
-| **Error handling** | Graceful messages for mic permission denial, no speech detected, network errors, and unrecognized commands — the app never crashes on bad input |
+| **Voice input** | Real browser speech-to-text (Web Speech API) — no external API keys needed. |
+| **NLP / intent parsing** | Rule-based parser recognizing add, remove, search, clear, and list commands across varied phrasings ("add milk", "I need apples", "I want to buy bananas"). |
+| **Multilingual** | Speech recognition **and** command parsing work in English, Hindi, हिंदी, Spanish, and French — switchable via a language dropdown. |
+| **Quantity parsing** | Handles both digits ("2 bottles of water") and number words ("add three tomatoes"). |
+| **Smart Suggestions** | Prompts alternatives for certain items (substitutes), static seasonal chips, and simulated "You usually buy" staples. |
+| **Voice-activated search** | Search a 35-item mock product catalog by name, brand, or category, with "under $X" price filtering. |
+| **Enterprise Accessibility (a11y)** | Polite `aria-live` screen-reader announcements, global keyboard hotkeys (`Space` / `Alt+M` to toggle mic), semantic tags, and WCAG-compliant contrast. |
+| **Mobile-First UX** | Floating thumb-reachable microphone controller, 44×44px minimum touch targets, real-time live transcript pills, and pulsating active-listening animations. |
+| **Visual Feedback** | Integrated `react-hot-toast` for elegant, non-intrusive success/error notifications. |
+| **Error handling** | Graceful fallback messages for mic permission denial, no speech detected, network errors, and unrecognized commands — the app never crashes on bad input. |
 
 ## Tech Stack
 
 | Layer | Choice | Why |
 |---|---|---|
-| Frontend | React 18 (Vite) | Fast dev loop, no backend needed for this scope |
-| Voice I/O | Web Speech API (`SpeechRecognition`) | Native, free, zero API keys |
-| NLP | Custom rule-based intent parser (regex + per-language keyword sets) | Deterministic, fast, fully offline-capable — chosen over a hosted NLP service for reliability within the time budget |
-| Styling | Tailwind CSS v4 | Rapid, consistent, mobile-first by default |
-| State | React hooks (`useState`, in-memory) | No backend/database in scope — see limitations |
-| Hosting | Vercel | One-command deploy, automatic HTTPS (required for mic access), zero-config for Vite |
+| **Frontend** | React 18 (Vite) | Fast dev loop, no backend needed for this scope. |
+| **Voice I/O** | Web Speech API | Native, free, zero API keys. |
+| **NLP** | Custom rule-based intent parser | Deterministic, fast, fully offline-capable — chosen over a hosted NLP service for reliability within the time budget. |
+| **Styling & UI** | Tailwind CSS v4, React Hot Toast | Rapid, consistent, mobile-first by default with polished notification systems. |
+| **State** | React hooks (`useState`) | No backend/database in scope — see limitations. |
+| **Hosting** | Vercel | One-command deploy, automatic HTTPS (required for mic access), zero-config for Vite. |
 
 ## How It Works
+
 ```mermaid
 flowchart TD
-    A["🎤 User speaks"] --> B["Web Speech API<br/><small>Real-time transcription</small>"]
+    A["🎤 User speaks<br/>(or presses Space)"] --> B["Web Speech API<br/><small>Real-time transcription</small>"]
     B --> C["parseCommand()<br/><small>Multilingual intent parsing</small>"]
+    
     C --> D["useShoppingList()<br/><small>Add, remove, categorize</small>"]
     C --> E["searchProducts()<br/><small>Search mock catalog</small>"]
-    D --> F["App.jsx — React UI<br/><small>List, toasts, suggestion chips</small>"]
+    
+    D --> F["App.jsx — React UI"]
     E --> F
+    
+    F --> G["Live Announcer<br/><small>aria-live updates</small>"]
+    F --> H["Toast Notifications<br/><small>Visual confirmations</small>"]
+    F --> I["Floating Controller<br/><small>Listening animations</small>"]
 
     style A fill:#F1EFE8,stroke:#5F5E5A,color:#2C2C2A
     style B fill:#FAECE7,stroke:#993C1D,color:#4A1B0C
@@ -73,6 +79,9 @@ flowchart TD
     style D fill:#E1F5EE,stroke:#0F6E56,color:#04342C
     style E fill:#FBEAF0,stroke:#993556,color:#4B1528
     style F fill:#F1EFE8,stroke:#5F5E5A,color:#2C2C2A
+    style G fill:#FFFBEA,stroke:#D4AF37,color:#5C4033
+    style H fill:#E6F7FF,stroke:#1890FF,color:#003A8C
+    style I fill:#F6FFED,stroke:#52C41A,color:#135200
 ```
 
 The parser is language-aware: each supported locale (`en-US`, `hi-IN`, `es-ES`, `fr-FR`) has its own keyword dictionary for recognizing add/remove/search/clear/list verbs, so both **speech-to-text and command understanding** work across languages — not just transcription.
@@ -81,23 +90,27 @@ The parser is language-aware: each supported locale (`en-US`, `hi-IN`, `es-ES`, 
 
 ```
 src/
-├── App.jsx                    # Main UI + orchestration
+├── App.jsx                    # Main UI + orchestration & keyboard listeners
+├── components/
+│   ├── VoiceController.jsx    # Floating mobile mic + live transcript pill
+│   ├── CategorizedList.jsx    # Semantic accessible list rendering
+│   └── SuggestionChips.jsx    # Smart recommendations (substitutes, seasonal)
 ├── hooks/
-│   ├── useSpeechRecognition.js  # Web Speech API wrapper
-│   └── useShoppingList.js       # List state + command dispatcher
+│   ├── useSpeechRecognition.js # Web Speech API wrapper
+│   └── useShoppingList.js     # List state + command dispatcher
 ├── utils/
-│   ├── parseCommand.js          # Multilingual intent parser
-│   ├── categories.js            # Item → category lookup
-│   ├── suggestions.js           # Substitutes, seasonal, "usually buy"
-│   └── searchProducts.js        # Mock catalog search + price filter
+│   ├── parseCommand.js        # Multilingual intent parser
+│   ├── categories.js          # Item → category lookup
+│   ├── suggestions.js         # Substitutes, seasonal, "usually buy"
+│   └── searchProducts.js      # Mock catalog search + price filter
 └── data/
-    └── products.js               # Mock product catalog (35 items)
+    └── products.js            # Mock product catalog (35 items)
 ```
 
 ## Running Locally
 
 ```bash
-git clone https://github.com/your-username/voice-shopping-assistant.git
+git clone [https://github.com/AbhyanandSharma2005/voice-shopping-assistant.git](https://github.com/AbhyanandSharma2005/voice-shopping-assistant.git)
 cd voice-shopping-assistant
 npm install
 npm run dev
