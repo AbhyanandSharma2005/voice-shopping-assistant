@@ -5,13 +5,6 @@ const NUMBER_WORDS = {
   six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
 };
 
-// Per-language keyword sets. Each language defines regex patterns for each
-// intent, plus a "fillers" regex used to strip command words out of the
-// remaining text so what's left is (hopefully) just the item name.
-//
-// Coverage note: this is a curated keyword list per language, not a real
-// translation/NLU model. It covers common phrasings but will miss anything
-// outside these word lists — documented as a known limitation.
 const LANG_PATTERNS = {
   'en-US': {
     add: /\b(add|need|buy|want)\b/i,
@@ -55,8 +48,6 @@ function extractQuantity(text) {
   const digitMatch = text.match(/\b(\d+)\b/);
   if (digitMatch) return parseInt(digitMatch[1], 10);
 
-  // Word-number matching is English-only for now — digits ("2", "5") work
-  // in every language since they're not translated by speech recognition.
   for (const [word, num] of Object.entries(NUMBER_WORDS)) {
     if (new RegExp(`\\b${word}\\b`, 'i').test(text)) return num;
   }
@@ -71,49 +62,53 @@ function cleanItemName(text, patterns) {
     .trim();
 }
 
-export function parseCommand(rawText, langCode = 'en-US') {
+// 1. Rename your old function to be the fallback
+function fallbackParseCommand(rawText, langCode = 'en-US') {
+  console.log("Using Regex Fallback Parser");
   const patterns = LANG_PATTERNS[langCode] || LANG_PATTERNS['en-US'];
   const text = rawText.toLowerCase().trim();
 
-  // SEARCH_ITEM
   if (patterns.search.test(text)) {
     const priceMatch = text.match(patterns.under);
-    const query = text
-      .replace(patterns.search, '')
-      .replace(patterns.under, '')
-      .trim();
-    return {
-      intent: 'SEARCH_ITEM',
-      query,
-      maxPrice: priceMatch ? parseInt(priceMatch[1], 10) : null,
-      raw: rawText,
-    };
+    const query = text.replace(patterns.search, '').replace(patterns.under, '').trim();
+    return { intent: 'SEARCH_ITEM', query, maxPrice: priceMatch ? parseInt(priceMatch[1], 10) : null, raw: rawText };
   }
-
-  // REMOVE_ITEM
   if (patterns.remove.test(text)) {
     const itemName = cleanItemName(text.replace(patterns.remove, ''), patterns);
     return { intent: 'REMOVE_ITEM', item: itemName, raw: rawText };
   }
-
-  // CLEAR_LIST
-  if (patterns.clear.test(text)) {
-    return { intent: 'CLEAR_LIST', raw: rawText };
-  }
-
-  // LIST_ITEMS
-  if (patterns.list.test(text)) {
-    return { intent: 'LIST_ITEMS', raw: rawText };
-  }
-
-  // ADD_ITEM — fallback default for anything with an add-type verb
+  if (patterns.clear.test(text)) { return { intent: 'CLEAR_LIST', raw: rawText }; }
+  if (patterns.list.test(text)) { return { intent: 'LIST_ITEMS', raw: rawText }; }
+  
   if (patterns.add.test(text)) {
     const quantity = extractQuantity(text);
     const itemName = cleanItemName(text, patterns);
-    if (itemName) {
-      return { intent: 'ADD_ITEM', item: itemName, quantity, raw: rawText };
-    }
+    if (itemName) return { intent: 'ADD_ITEM', item: itemName, quantity, raw: rawText };
+  }
+  return { intent: 'UNKNOWN', raw: rawText };
+}
+
+// 2. Export the new Async function that hits your Python Backend
+export async function parseCommand(rawText, langCode = 'en-US') {
+  // If the language isn't English, bypass spaCy (which we configure for EN) and use the local fallback immediately
+  if (langCode !== 'en-US') {
+    return fallbackParseCommand(rawText, langCode);
   }
 
-  return { intent: 'UNKNOWN', raw: rawText };
+  try {
+    const response = await fetch('/api/intent_parser', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: rawText })
+    });
+
+    if (!response.ok) throw new Error('Backend NLP failed');
+    
+    const data = await response.json();
+    return { ...data, raw: rawText }; // Ensure `raw` text is always passed back
+    
+  } catch (error) {
+    console.error("Advanced NLP failed, falling back to Regex:", error);
+    return fallbackParseCommand(rawText, langCode);
+  }
 }
