@@ -53,7 +53,7 @@ This was built end-to-end in a single sitting against a fixed time budget. Every
 | **Frontend** | React 18 (Vite) | Fast dev loop, no backend needed for this scope. |
 | **Voice I/O** | Web Speech API | Native, free, zero API keys. |
 | **NLP** | Custom rule-based intent parser | Deterministic, fast, fully offline-capable — chosen over a hosted NLP service for reliability within the time budget. |
-| **Styling & UI** | Tailwind CSS v4, React Hot Toast | Rapid, consistent, mobile-first by default with polished notification systems. |
+| **Styling & UI** | Tailwind CSS v4, React Hot Toast | Rapid, consistent, mobile-first by default with polished notification systems and smooth backdrop gradients. |
 | **State** | React hooks (`useState`) | No backend/database in scope — see limitations. |
 | **Hosting** | Vercel | One-command deploy, automatic HTTPS (required for mic access), zero-config for Vite. |
 
@@ -91,11 +91,11 @@ The parser is language-aware: each supported locale (`en-US`, `hi-IN`, `es-ES`, 
 
 ```
 src/
-├── App.jsx                    # Main UI + orchestration & keyboard listeners
+├── App.jsx                     # Main UI + orchestration & keyboard listeners
 ├── components/
-│   ├── VoiceController.jsx    # Floating mobile mic + live transcript pill
-│   ├── CategorizedList.jsx    # Semantic accessible list rendering
-│   └── SuggestionChips.jsx    # Smart recommendations (substitutes, seasonal)
+│   ├── VoiceController.jsx     # Floating mobile mic + live transcript pill
+│   ├── CategorizedList.jsx     # Semantic accessible list rendering
+│   └── SuggestionChips.jsx     # Smart recommendations (substitutes, seasonal)
 ├── hooks/
 │   ├── useSpeechRecognition.js # Web Speech API wrapper
 │   └── useShoppingList.js     # List state + command dispatcher
