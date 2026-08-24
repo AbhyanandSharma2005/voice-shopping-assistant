@@ -1,1 +1,23 @@
 @import "tailwindcss";
+
+/* Apply the premium font globally */
+@theme {
+  --font-sans: "Plus Jakarta Sans", sans-serif;
+}
+
+/* Custom utilities for a sleek UI */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Soft glass effect for floating elements */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
