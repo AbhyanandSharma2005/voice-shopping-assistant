@@ -101,7 +101,6 @@ function App() {
     if (!lastAction) return;
     let message = '';
     
-    // Custom styling for premium toast notifications
     const toastConfig = {
       style: {
         borderRadius: '16px',
@@ -149,7 +148,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans pb-36">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-zinc-100 to-emerald-50/40 font-sans pb-36">
       <Toaster position="top-center" reverseOrder={false} />
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {screenReaderMessage}
@@ -163,7 +162,7 @@ function App() {
               <ShoppingCart size={24} strokeWidth={2.5} />
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">VoiceCart</h1>
+              <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-gray-900">Voice Shopping Assistant</h1>
               <p className="text-xs font-semibold text-gray-500 tracking-wide uppercase">Smart Assistant</p>
             </div>
           </div>
@@ -209,7 +208,7 @@ function App() {
                   key={`${suggestion.name}-${idx}`}
                   type="button"
                   onClick={() => handleQuickAdd(suggestion.name)}
-                  className="flex-shrink-0 group flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-emerald-200 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="flex-shrink-0 group flex items-center gap-2 px-4 py-2.5 bg-white/80 backdrop-blur-md border border-gray-200/60 rounded-2xl shadow-sm hover:border-emerald-300 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <div className="bg-emerald-50 text-emerald-600 p-1 rounded-full group-hover:bg-emerald-500 group-hover:text-white transition-colors">
                     <Plus size={14} strokeWidth={3} />
@@ -228,14 +227,14 @@ function App() {
 
         {/* Search Results */}
         {searching && (
-          <div className="flex items-center gap-3 p-4 bg-white rounded-2xl shadow-sm animate-pulse mb-6 border border-gray-100">
+          <div className="flex items-center gap-3 p-4 bg-white/80 backdrop-blur-md rounded-2xl shadow-sm animate-pulse mb-6 border border-gray-200/60">
             <Search className="text-gray-400 animate-spin" size={20} />
             <span className="text-sm font-semibold text-gray-500">Searching catalog...</span>
           </div>
         )}
 
         {!searching && searchResults !== null && (
-          <div className="mb-8 bg-white border border-gray-100 rounded-3xl p-5 shadow-sm">
+          <div className="mb-8 bg-white/90 backdrop-blur-md border border-gray-200/60 rounded-3xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
                 <Search size={16} className="text-emerald-500" />
@@ -243,7 +242,7 @@ function App() {
               </h3>
               <button
                 onClick={() => setSearchResults(null)}
-                className="text-xs font-semibold text-gray-400 hover:text-gray-600 bg-gray-50 px-3 py-1 rounded-full transition-colors"
+                className="text-xs font-semibold text-gray-400 hover:text-gray-600 bg-gray-100 px-3 py-1 rounded-full transition-colors"
               >
                 Clear
               </button>
@@ -257,7 +256,7 @@ function App() {
             ) : (
               <ul className="space-y-3">
                 {searchResults.map((product) => (
-                  <li key={product.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-2xl border border-gray-100">
+                  <li key={product.id} className="flex justify-between items-center bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
                     <div>
                       <p className="text-sm font-bold text-gray-800">{product.name}</p>
                       <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mt-0.5">{product.brand} · {product.category}</p>
@@ -283,7 +282,7 @@ function App() {
           <h2 className="text-xl font-extrabold mb-4 text-gray-900">Your Cart</h2>
           
           {Object.keys(groupedByCategory).length === 0 && (
-            <div className="text-center py-16 px-4 bg-white rounded-3xl border border-dashed border-gray-200 shadow-sm">
+            <div className="text-center py-16 px-4 bg-white/80 backdrop-blur-md rounded-3xl border border-dashed border-gray-300 shadow-sm">
               <ShoppingCart size={40} strokeWidth={1.5} className="mx-auto text-gray-300 mb-4" />
               <p className="text-gray-900 font-bold mb-1">Your cart is empty</p>
               <p className="text-gray-400 text-xs font-medium">Tap the mic and say "Add 2 bottles of milk"</p>
@@ -297,7 +296,7 @@ function App() {
               </h3>
               <ul className="space-y-2">
                 {catItems.map((item) => (
-                  <li key={item.id} className="flex justify-between items-center bg-white px-4 py-3.5 rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
+                  <li key={item.id} className="flex justify-between items-center bg-white/90 backdrop-blur-md px-4 py-3.5 rounded-2xl border border-gray-200/60 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
                     <span className="font-bold text-gray-800 text-sm">{item.name}</span>
                     <span className="text-xs font-bold bg-gray-100 text-gray-600 px-3 py-1 rounded-lg">
                       x{item.quantity}
@@ -311,7 +310,7 @@ function App() {
       </div>
 
       {/* Premium Glassmorphic Floating Action Controller */}
-      <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-gray-50 via-gray-50/90 to-transparent z-50 pointer-events-none flex flex-col items-center justify-end h-40">
+      <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-slate-100 via-slate-100/80 to-transparent z-50 pointer-events-none flex flex-col items-center justify-end h-40">
         
         {/* Live Transcript Bubble */}
         <div className={`transition-all duration-300 transform ${transcript ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'} mb-4 pointer-events-auto`}>
@@ -325,7 +324,6 @@ function App() {
 
         {/* Mic Button Container */}
         <div className="relative flex items-center justify-center pointer-events-auto">
-          {/* Glow Rings */}
           {listening && (
             <>
               <span className="absolute h-20 w-20 rounded-full bg-emerald-400/30 animate-ping" />
