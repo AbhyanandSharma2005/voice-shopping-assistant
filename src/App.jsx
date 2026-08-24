@@ -21,6 +21,15 @@ function App() {
   const [searching, setSearching] = useState(false);
   const [showToast, setShowToast] = useState(false);
 
+  // Screen reader announcements state & helper
+  const [screenReaderMessage, setScreenReaderMessage] = useState('');
+
+  const announce = (message) => {
+    setScreenReaderMessage(message);
+    // Clear after 3 seconds so subsequent identical messages trigger re-reads
+    setTimeout(() => setScreenReaderMessage(''), 3000);
+  };
+
   // Parse each new transcript into a command and act on it
   useEffect(() => {
     if (!transcript) return;
@@ -43,9 +52,31 @@ function App() {
     }
   }, [transcript, applyCommand, selectedLang]);
 
-  // Auto-dismiss the confirmation toast after 4 seconds
+  // Auto-dismiss the confirmation toast after 4 seconds and send announcements to screen readers
   useEffect(() => {
     if (!lastAction) return;
+
+    let message = '';
+    if (lastAction.type === 'added') {
+      message = `Added ${lastAction.quantity} ${lastAction.name}${lastAction.category ? ` to ${lastAction.category}` : ''}`;
+    } else if (lastAction.type === 'updated') {
+      message = `${lastAction.name} quantity updated to ${lastAction.quantity}`;
+    } else if (lastAction.type === 'removed') {
+      message = `Removed ${lastAction.name} from your list`;
+    } else if (lastAction.type === 'not_found') {
+      message = `"${lastAction.name}" wasn't on your list`;
+    } else if (lastAction.type === 'cleared') {
+      message = 'List cleared';
+    } else if (lastAction.type === 'listed') {
+      message = "Here's your current list";
+    } else if (lastAction.type === 'unknown') {
+      message = "Sorry, I didn't understand that";
+    }
+
+    if (message) {
+      announce(message);
+    }
+
     setShowToast(true);
     const timer = setTimeout(() => setShowToast(false), 4000);
     return () => clearTimeout(timer);
@@ -68,6 +99,16 @@ function App() {
 
   return (
     <div className="p-4 sm:p-6 max-w-md mx-auto mt-6 sm:mt-8">
+      {/* Screen reader live region for announcements */}
+      <div 
+        role="status" 
+        aria-live="polite" 
+        aria-atomic="true" 
+        className="sr-only"
+      >
+        {screenReaderMessage}
+      </div>
+
       <h1 className="text-2xl font-bold mb-4">🛒 Voice Shopping Assistant</h1>
 
       <div className="mb-3">
