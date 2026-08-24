@@ -1,0 +1,36 @@
+# .github/workflows/ci.yml
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Check out the repository code
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # 2. Set up the Node environment
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      # 3. Install dependencies cleanly
+      - name: Install Dependencies
+        run: npm ci
+
+      # 4. Run the automated tests (Vitest)
+      - name: Run Unit Tests
+        run: npm run test
+
+      # 5. Verify the app builds without errors
+      - name: Build Production App
+        run: npm run build
