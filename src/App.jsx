@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSpeechRecognition } from './hooks/useSpeechRecognition';
 import { useShoppingList } from './hooks/useShoppingList';
 import { parseCommand } from './utils/parseCommand';
@@ -14,7 +14,14 @@ const LANGUAGES = [
 
 function App() {
   const [selectedLang, setSelectedLang] = useState('en-US');
-  const { transcript, listening, error, startListening } = useSpeechRecognition(selectedLang);
+  const { 
+    transcript, 
+    listening, 
+    error, 
+    startListening, 
+    stopListening, 
+    toggleListening: hookToggleListening 
+  } = useSpeechRecognition(selectedLang);
   const { items, groupedByCategory, lastAction, applyCommand } = useShoppingList();
   const [searchResults, setSearchResults] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -29,6 +36,40 @@ function App() {
     // Clear after 3 seconds so subsequent identical messages trigger re-reads
     setTimeout(() => setScreenReaderMessage(''), 3000);
   };
+
+  const isListening = listening;
+
+  const toggleListening = useCallback(() => {
+    if (hookToggleListening) {
+      hookToggleListening();
+    } else if (isListening) {
+      stopListening?.();
+    } else {
+      startListening?.();
+    }
+  }, [hookToggleListening, isListening, startListening, stopListening]);
+
+  // Global Keyboard Accessibility (Space / Alt+M to toggle, Escape to cancel)
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      // Check if the user is typing in a text input or search bar
+      const isInputActive = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
+      
+      // Toggle mic with Space or Alt+M when not focused on an input
+      if ((event.code === 'Space' && !isInputActive) || (event.altKey && event.key.toLowerCase() === 'm')) {
+        event.preventDefault();
+        toggleListening();
+      }
+      
+      // Escape cancels/stops listening immediately
+      if (event.key === 'Escape' && isListening) {
+        toggleListening();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isListening, toggleListening]);
 
   // Parse each new transcript into a command and act on it
   useEffect(() => {
@@ -129,11 +170,10 @@ function App() {
 
       <div className="flex items-center gap-3">
         <button
-          onClick={startListening}
-          disabled={listening}
+          onClick={toggleListening}
           className={`px-6 py-3 rounded-full text-white font-semibold transition-all ${
             listening
-              ? 'bg-red-500 animate-pulse cursor-not-allowed'
+              ? 'bg-red-500 animate-pulse'
               : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
           }`}
         >
